@@ -3,6 +3,8 @@ FROM python:2.7.15-slim-jessie
 # add our user and group first to make sure their IDs get assigned consistently
 RUN groupadd -r sentry && useradd -r -m -g sentry sentry
 
+curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
         gcc \
         git \
@@ -12,6 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libxml2-dev \
         libxslt-dev \
         libyaml-dev \
+        nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # Sane defaults for pip
@@ -58,14 +61,12 @@ ENV SENTRY_VERSION 9.0.0
 RUN set -x \
     && apt-get update && apt-get install -y --no-install-recommends wget g++ && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /usr/src/sentry \
-    && wget -O /usr/src/sentry/sentry-${SENTRY_VERSION}-py27-none-any.whl "https://github.com/getsentry/sentry/releases/download/${SENTRY_VERSION}/sentry-${SENTRY_VERSION}-py27-none-any.whl" \
-    && wget -O /usr/src/sentry/sentry-${SENTRY_VERSION}-py27-none-any.whl.asc "https://github.com/getsentry/sentry/releases/download/${SENTRY_VERSION}/sentry-${SENTRY_VERSION}-py27-none-any.whl.asc" \
     && wget -O /usr/src/sentry/sentry_plugins-${SENTRY_VERSION}-py2.py3-none-any.whl "https://github.com/getsentry/sentry/releases/download/${SENTRY_VERSION}/sentry_plugins-${SENTRY_VERSION}-py2.py3-none-any.whl" \
     && wget -O /usr/src/sentry/sentry_plugins-${SENTRY_VERSION}-py2.py3-none-any.whl.asc "https://github.com/getsentry/sentry/releases/download/${SENTRY_VERSION}/sentry_plugins-${SENTRY_VERSION}-py2.py3-none-any.whl.asc" \
     && export GNUPGHOME="$(mktemp -d)" \
     && gpg --keyserver keyserver.ubuntu.com --recv-keys D8749766A66DD714236A932C3B2D400CE5BBCA60 \
     && gpg --batch --verify /usr/src/sentry/sentry_plugins-${SENTRY_VERSION}-py2.py3-none-any.whl.asc /usr/src/sentry/sentry_plugins-${SENTRY_VERSION}-py2.py3-none-any.whl \
-    && pip install -e git+https://github.com/getsentry/sentry.git@master#egg=sentry-dev \
+    && pip install -e git+https://github.com/javascriptlove/sentry.git@master#egg=sentry-dev \
         /usr/src/sentry/sentry_plugins-${SENTRY_VERSION}-py2.py3-none-any.whl \
     && sentry --help \
     && sentry plugins list \

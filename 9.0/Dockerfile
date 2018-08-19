@@ -66,13 +66,16 @@ RUN set -x \
     && gpg --keyserver ha.pool.sks-keyservers.net --recv-keys D8749766A66DD714236A932C3B2D400CE5BBCA60 \
     && gpg --batch --verify /usr/src/sentry/sentry-${SENTRY_VERSION}-py27-none-any.whl.asc /usr/src/sentry/sentry-${SENTRY_VERSION}-py27-none-any.whl \
     && gpg --batch --verify /usr/src/sentry/sentry_plugins-${SENTRY_VERSION}-py2.py3-none-any.whl.asc /usr/src/sentry/sentry_plugins-${SENTRY_VERSION}-py2.py3-none-any.whl \
-    && pip install \
-        /usr/src/sentry/sentry-${SENTRY_VERSION}-py27-none-any.whl \
+    && pip install -e git+https://github.com/getsentry/sentry.git@master#egg=sentry-dev
         /usr/src/sentry/sentry_plugins-${SENTRY_VERSION}-py2.py3-none-any.whl \
     && sentry --help \
     && sentry plugins list \
     && rm -r "$GNUPGHOME" /usr/src/sentry \
     && apt-get purge -y --auto-remove wget g++
+
+# && pip install \
+#    /usr/src/sentry/sentry-${SENTRY_VERSION}-py27-none-any.whl \
+#    /usr/src/sentry/sentry_plugins-${SENTRY_VERSION}-py2.py3-none-any.whl \
 
 ENV SENTRY_CONF=/etc/sentry \
     SENTRY_FILESTORE_DIR=/var/lib/sentry/files

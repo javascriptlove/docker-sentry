@@ -30,13 +30,9 @@ RUN set -x \
     && rm -r "$GNUPGHOME" /usr/local/bin/gosu.asc \
     && chmod +x /usr/local/bin/gosu \
     && gosu nobody true \
+    && wget https://deb.nodesource.com/setup_8.x | -E bash - \
+    && apt-get update && apt-get install -y --no-install-recommends nodejs \
     && apt-get purge -y --auto-remove wget
-
-## install npm
-RUN wget https://deb.nodesource.com/setup_8.x | -E bash -
-RUN apt-get update && apt-get install -y --no-install-recommends nodejs \
-    && rm -rf /var/lib/apt/lists/*
-
 
 # grab tini for signal processing and zombie killing
 RUN set -x \

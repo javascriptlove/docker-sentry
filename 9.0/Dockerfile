@@ -1,3 +1,4 @@
+# Build from any git sha by passing `--build-arg SENTRY_BUILD=<sha>`
 FROM python:2.7.15-slim-jessie
 
 # add our user and group first to make sure their IDs get assigned consistently
@@ -19,8 +20,8 @@ ENV PIP_NO_CACHE_DIR off
 ENV PIP_DISABLE_PIP_VERSION_CHECK on
 
 # grab gosu for easy step-down from root
-ENV GOSU_VERSION 1.10
 RUN set -x \
+    && export GOSU_VERSION=1.10 \
     && apt-get update && apt-get install -y --no-install-recommends wget && rm -rf /var/lib/apt/lists/* \
     && wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$(dpkg --print-architecture)" \
     && wget -O /usr/local/bin/gosu.asc "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$(dpkg --print-architecture).asc" \
@@ -30,8 +31,6 @@ RUN set -x \
     && rm -r "$GNUPGHOME" /usr/local/bin/gosu.asc \
     && chmod +x /usr/local/bin/gosu \
     && gosu nobody true \
-    && wget -qO- https://deb.nodesource.com/setup_8.x | bash - \
-    && apt-get update && apt-get install -y --no-install-recommends nodejs \
     && apt-get purge -y --auto-remove wget
 
 # grab tini for signal processing and zombie killing
@@ -41,7 +40,7 @@ RUN set -x \
     && wget -O /usr/local/bin/tini "https://github.com/krallin/tini/releases/download/v$TINI_VERSION/tini" \
     && wget -O /usr/local/bin/tini.asc "https://github.com/krallin/tini/releases/download/v$TINI_VERSION/tini.asc" \
     && export GNUPGHOME="$(mktemp -d)" \
-    && gpg --keyserver keyserver.ubuntu.com --recv-keys 595E85A6B1B4779EA4DAAEC70B588DFF0527A9B7 \
+    && gpg --keyserver ha.pool.sks-keyservers.net --recv-keys 595E85A6B1B4779EA4DAAEC70B588DFF0527A9B7 \
     && gpg --batch --verify /usr/local/bin/tini.asc /usr/local/bin/tini \
     && rm -r "$GNUPGHOME" /usr/local/bin/tini.asc \
     && chmod +x /usr/local/bin/tini \
@@ -55,26 +54,53 @@ RUN set -x \
     && python -c 'import librabbitmq' \
     && apt-get purge -y --auto-remove make
 
-ENV SENTRY_VERSION 9.0.0
+ARG SENTRY_BUILD=master
+ENV SENTRY_BUILD $SENTRY_BUILD
 
-RUN set -x \
-    && apt-get update && apt-get install -y --no-install-recommends wget g++ && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /usr/src/sentry \
-    && wget -O /usr/src/sentry/sentry_plugins-${SENTRY_VERSION}-py2.py3-none-any.whl "https://github.com/getsentry/sentry/releases/download/${SENTRY_VERSION}/sentry_plugins-${SENTRY_VERSION}-py2.py3-none-any.whl" \
-    && wget -O /usr/src/sentry/sentry_plugins-${SENTRY_VERSION}-py2.py3-none-any.whl.asc "https://github.com/getsentry/sentry/releases/download/${SENTRY_VERSION}/sentry_plugins-${SENTRY_VERSION}-py2.py3-none-any.whl.asc" \
+RUN [ "$SENTRY_BUILD" != '' ] \
+    # Install node to build assets
+    && export NODE_VERSION=8.9.1 \
+    && export YARN_VERSION=1.3.2 \
     && export GNUPGHOME="$(mktemp -d)" \
-    && gpg --keyserver keyserver.ubuntu.com --recv-keys D8749766A66DD714236A932C3B2D400CE5BBCA60 \
-    && gpg --batch --verify /usr/src/sentry/sentry_plugins-${SENTRY_VERSION}-py2.py3-none-any.whl.asc /usr/src/sentry/sentry_plugins-${SENTRY_VERSION}-py2.py3-none-any.whl \
-    && pip install -e git+https://github.com/javascriptlove/sentry.git@master#egg=sentry-dev \
-        /usr/src/sentry/sentry_plugins-${SENTRY_VERSION}-py2.py3-none-any.whl \
-    && sentry --help \
-    && sentry plugins list \
-    && rm -r "$GNUPGHOME" /usr/src/sentry \
-    && apt-get purge -y --auto-remove wget g++
+    && export NPM_CONFIG_CACHE="$(mktemp -d)" \
+    && export YARN_CACHE_FOLDER="$(mktemp -d)" \
+    # gpg keys listed at https://github.com/nodejs/node
+    && for key in \
+      94AE36675C464D64BAFA68DD7434390BDBE9B9C5 \
+      B9AE9905FFD7803F25714661B63B535A4C206CA9 \
+      77984A986EBC2AA786BC0F66B01FBB92821C587A \
+      56730D5401028683275BD23C23EFEFE93C4CFFFE \
+      71DCFD284A79C3B38668286BC97EC7A07EDE3FC1 \
+      FD3A5288F042B6850C66B31F09FE44734EB7990E \
+      C4F0DFFF4E8C1A8236409D08E73BC641CC11F4C8 \
+      DD8F2338BAE7501E3DD5AC78C273792F7D83545D \
+    ; do \
+      gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; \
+    done \
+    && mkdir -p /usr/local/node && PATH=/usr/local/node/bin:$PATH \
+    && apt-get update && apt-get install -y --no-install-recommends make g++ wget \
+    && rm -rf /var/lib/apt/lists/* \
+    && wget "https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-x64.tar.gz" \
+    && wget "https://nodejs.org/dist/v$NODE_VERSION/SHASUMS256.txt.asc" \
+    && gpg --verify SHASUMS256.txt.asc \
+    && grep " node-v$NODE_VERSION-linux-x64.tar.gz\$" SHASUMS256.txt.asc | sha256sum -c - \
+    && tar -xzf "node-v$NODE_VERSION-linux-x64.tar.gz" -C /usr/local/node --strip-components=1 \
+    && rm -r "$GNUPGHOME" "node-v$NODE_VERSION-linux-x64.tar.gz" SHASUMS256.txt.asc \
+    && npm install -g yarn@$YARN_VERSION \
 
-# && pip install \
-#    /usr/src/sentry/sentry-${SENTRY_VERSION}-py27-none-any.whl \
-#    /usr/src/sentry/sentry_plugins-${SENTRY_VERSION}-py2.py3-none-any.whl \
+    && mkdir -p /usr/src/sentry \
+    && cd /usr/src/sentry \
+    && wget -qO - "https://github.com/javascriptlove/sentry/archive/master.zip" | tar -xzf - --strip-components=1 \
+    && python setup.py bdist_wheel \
+
+    # Now remove node since it's not needed anymore in the final container
+    && rm -r "$NPM_CONFIG_CACHE" "$YARN_CACHE_FOLDER" \
+    && rm -rf /usr/local/node \
+
+    && pip install dist/*.whl \
+
+    && apt-get purge -y --auto-remove make g++ wget \
+    && rm -rf /usr/src/sentry
 
 ENV SENTRY_CONF=/etc/sentry \
     SENTRY_FILESTORE_DIR=/var/lib/sentry/files

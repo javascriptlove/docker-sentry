@@ -3,8 +3,6 @@ FROM python:2.7.15-slim-jessie
 # add our user and group first to make sure their IDs get assigned consistently
 RUN groupadd -r sentry && useradd -r -m -g sentry sentry
 
-RUN curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
-
 RUN apt-get update && apt-get install -y --no-install-recommends \
         gcc \
         git \
@@ -14,7 +12,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libxml2-dev \
         libxslt-dev \
         libyaml-dev \
-        nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # Sane defaults for pip
@@ -34,6 +31,12 @@ RUN set -x \
     && chmod +x /usr/local/bin/gosu \
     && gosu nobody true \
     && apt-get purge -y --auto-remove wget
+
+## install npm
+RUN wget https://deb.nodesource.com/setup_8.x | -E bash -
+RUN apt-get update && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
 
 # grab tini for signal processing and zombie killing
 RUN set -x \

@@ -90,7 +90,7 @@ RUN [ "$SENTRY_BUILD" != '' ] \
 
     && mkdir -p /usr/src/sentry \
     && cd /usr/src/sentry \
-    && wget -qO - "https://github.com/javascriptlove/sentry/archive/master.zip" | tar -xzf - --strip-components=1 \
+    && wget -qO - "https://github.com/javascriptlove/sentry/archive/master.tar.gz" | tar -xzf - --strip-components=1 \
     && python setup.py bdist_wheel \
 
     # Now remove node since it's not needed anymore in the final container

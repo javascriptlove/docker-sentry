@@ -30,7 +30,7 @@ RUN set -x \
     && rm -r "$GNUPGHOME" /usr/local/bin/gosu.asc \
     && chmod +x /usr/local/bin/gosu \
     && gosu nobody true \
-    && wget -qO- https://deb.nodesource.com/setup_8.x | bash -
+    && wget -qO- https://deb.nodesource.com/setup_8.x | bash - \
     && apt-get update && apt-get install -y --no-install-recommends nodejs \
     && apt-get purge -y --auto-remove wget
 

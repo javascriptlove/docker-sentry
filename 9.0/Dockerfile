@@ -3,7 +3,7 @@ FROM python:2.7.15-slim-jessie
 # add our user and group first to make sure their IDs get assigned consistently
 RUN groupadd -r sentry && useradd -r -m -g sentry sentry
 
-curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
+RUN curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         gcc \
